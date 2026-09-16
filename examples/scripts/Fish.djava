@@ -1,0 +1,758 @@
+package pixelbot;
+
+import java.awt.*;
+import java.awt.geom.Area;
+import java.util.*;
+import java.util.List;
+
+import pixelbot.components.generic.HighlightScreen.IHighlight;
+import pixelbot.misc.*;
+import pixelbot.script.general.*;
+import pixelbot.script.helper.IOHelper;
+import pixelbot.script.misc.ScopeClassifierItem;
+import pixelbot.script.scope.java.*;
+
+public class Fish implements INativeJob {
+	private static final int POOL_MIN_SIZE = 1000;
+	private NativeMap context;
+	private IOHelper helper;
+
+	@Override
+	public void setContext(NativeMap context) {
+		this.context = context;
+		this.helper = (IOHelper) context.getNative("Helper");
+	}
+
+	private IConfiguration config = new IConfiguration() {
+
+		@Override
+		public boolean active() {
+			return true;
+		}
+
+		@Override
+		public NativeList config(NativeMap params) throws InterruptedException {
+
+			NativeList config = new NativeList();
+
+			NativeList p = (NativeList) Fish.this.context.getMap("HHTools").getMap("params")
+					.invoke("config", params);
+
+			config.addAll(p);
+
+			HashMap<String, Object> map = null;
+			List<Map<String, Object>> list = null;
+
+			map = new HashMap<String, Object>();
+			list = new ArrayList<Map<String, Object>>();
+			map.put("name", "pool");
+			map.put("label", "Водоем");
+			map.put("type", "group");
+			map.put("values", list);
+			config.add(map);
+
+			map = new HashMap<String, Object>();
+			map.put("name", "pool_location");
+			map.put("label", "Расположение водоема");
+			map.put("type", "radio");
+			map.put("values",
+					Arrays.asList(new String[] { "Искать озеро", "Указать расположение",
+							"Ловить в реке", "Не трогать" }));
+			list.add(map);
+
+			map = new HashMap<String, Object>();
+			map.put("name", "pool_location_x");
+			map.put("label", "Горизоталь");
+			map.put("type",
+					params.get("pool") != null
+							&& "Указать расположение".equals(((Map<?, ?>) params.get("pool"))
+									.get("pool_location")) ? "slider" : "hidden");
+			map.put("values",
+					Arrays.asList(new Integer[] { Integer.valueOf(1), Integer.valueOf(0),
+							Integer.valueOf(1) }));
+			list.add(map);
+
+			map = new HashMap<String, Object>();
+			map.put("name", "pool_location_y");
+			map.put("label", "Вертикаль");
+			map.put("type",
+					params.get("pool") != null
+							&& "Указать расположение".equals(((Map<?, ?>) params.get("pool"))
+									.get("pool_location")) ? "slider" : "hidden");
+			map.put("values",
+					Arrays.asList(new Integer[] { Integer.valueOf(1), Integer.valueOf(0),
+							Integer.valueOf(100) }));
+			list.add(map);
+
+			map = new HashMap<String, Object>();
+			map.put("name", "pool_type");
+			map.put("label", "Вид водоема");
+			map.put("type", "radio");
+			map.put("values", Arrays.asList(new String[] { "Вода", "Лава" }));
+			list.add(map);
+
+			map = new HashMap<String, Object>();
+			map.put("name", "pool_coastline");
+			map.put("label", "Смещение береговой линии");
+			map.put("type", "slider");
+			map.put("values",
+					Arrays.asList(new Integer[] { Integer.valueOf(1), Integer.valueOf(-100),
+							Integer.valueOf(100) }));
+			list.add(map);
+
+			map = new HashMap<String, Object>();
+			list = new ArrayList<Map<String, Object>>();
+			map.put("name", "resource");
+			map.put("label", "Ресурс");
+			map.put("type", "group");
+			map.put("values", list);
+			config.add(map);
+
+			map = new HashMap<String, Object>();
+			map.put("name", "mode");
+			map.put("label", "Режим работы");
+			map.put("type", "radio");
+			map.put("values", Arrays.asList(new String[] { "Класс рыбы", "Название рыбы" }));
+			list.add(map);
+
+			HashSet<IClassifierItem> types = new HashSet<IClassifierItem>();
+			List<IClassifierItem> fishes = Fish.this.helper.getElementsDesc("ресурсы.рыба");
+			for (IClassifierItem f : fishes) {
+				String type = f.getText().substring(0, f.getText().indexOf('.'));
+				types.add(new ScopeClassifierItem(f.getOrder(), type));
+			}
+
+			IClassifierItem[] types_array = types.toArray(new IClassifierItem[] {});
+			Arrays.sort(types_array);
+
+			map = new HashMap<String, Object>();
+			map.put("name", "fish_types");
+			map.put("label", "Класс рыбы");
+			map.put("type",
+					params.get("resource") != null
+							&& "Класс рыбы".equals(((Map<?, ?>) params.get("resource")).get("mode"))
+							? "selector" : "hidden");
+			map.put("values", Arrays.asList(types_array));
+			list.add(map);
+
+			map = new HashMap<String, Object>();
+			map.put("name", "fish_names");
+			map.put("label", "Название рыбы");
+			map.put("type",
+					params.get("resource") != null
+							&& "Название рыбы".equals(((Map<?, ?>) params.get("resource"))
+									.get("mode")) ? "selector" : "hidden");
+			map.put("values", Fish.this.helper.getElementsDesc("ресурсы.рыба"));
+			list.add(map);
+
+			return config;
+		}
+
+		@Override
+		public Map<String, Object> defaults() throws InterruptedException {
+			HashMap<String, Object> map = new HashMap<String, Object>();
+
+			NativeMap p = (NativeMap) Fish.this.context.getMap("HHTools").getMap("params")
+					.invoke("default");
+			for (String k : p.keySet()) {
+				map.put(k, p.get(k));
+			}
+
+			map.put("mode", "Класс рыбы");
+			map.put("fish_types", "[]");
+			map.put("fish_names", "[]");
+
+			return map;
+		}
+
+		@Override
+		public String name() {
+			return "Ловить рыбу";
+		}
+
+	};
+
+	@Override
+	public IConfiguration params() {
+		return this.config;
+	}
+
+	public enum FishType {
+		Frequent, Regular, Occasional, Individual, Rare;
+
+		public static FishType parse(String value) {
+			if (value.startsWith("частый")) {
+				return Frequent;
+			} else if (value.startsWith("обычный")) {
+				return Regular;
+			} else if (value.startsWith("редкий")) {
+				return Occasional;
+			} else if (value.startsWith("единичный")) {
+				return Individual;
+			} else if (value.startsWith("раритетный")) {
+				return Rare;
+			}
+			return null;
+		}
+
+		@Override
+		public String toString() {
+			switch (this) {
+			case Frequent:
+				return "частый";
+			case Regular:
+				return "обычный";
+			case Occasional:
+				return "редкий";
+			case Individual:
+				return "единичный";
+			case Rare:
+				return "раритетный";
+			}
+			return "Неизвестный";
+		}
+	}
+
+	private enum PoolType {
+		Water, Lava
+	}
+
+	private class Highlight implements IHighlight {
+		private long millis = System.currentTimeMillis() + 5000;
+		private BitSet area;
+		private Rectangle rect;
+		private Color color;
+
+		public Highlight(BitSet area, Rectangle rect, Color color) {
+			this.area = area;
+			this.rect = rect;
+			this.color = color;
+		}
+
+		@Override
+		public long getMillis() {
+			return this.millis;
+		}
+
+		@Override
+		public void paint(Graphics g, Area shape) {
+			g.setColor(this.color);
+			for (int k = 0; k < this.area.size(); ++k) {
+				if (this.area.get(k)) {
+					Rectangle d = Fish.this.helper.browser.get();
+					g.fillRect(d.x + this.rect.x + (k % this.rect.width), d.y + this.rect.y
+							+ (k / this.rect.width), 1, 1);
+				}
+			}
+		}
+	}
+
+	@SuppressWarnings({ "boxing", "unchecked" })
+	@Override
+	public void main(Map<String, Object> params) throws InterruptedException {
+		Fish.this.helper.browser.detect();
+
+		((Map<String, Object>) params.get("resource")).put("type", "edge");
+
+		PoolType pool_type = "Лава".equals(((Map<String, Object>) params.get("pool"))
+				.get("pool_type")) ? PoolType.Lava : PoolType.Water;
+		int pool_coastline = ((Integer) ((Map<String, Object>) params.get("pool"))
+				.get("pool_coastline")).intValue();
+
+		String interfere = ((String) ((Map<String, Object>) params.get("general")).get("interfere"));
+		boolean defend = ((Boolean) ((Map<String, Object>) params.get("general")).get("defend"))
+				.booleanValue();
+		boolean mode = "Класс рыбы".equals(((Map<String, Object>) params.get("resource"))
+				.get("mode"));
+
+		this.context.getMap("Fight").invoke("init", params.get("fight"));
+		do {
+			try {
+				this.context.getMap("HHTools").invoke("travel", params);
+
+				EnumSet<FishType> types = EnumSet.noneOf(FishType.class);
+				List<?> fishes = (List<?>) ((Map<String, Object>) params.get("resource")).get(mode
+						? "fish_types" : "fish_names");
+				for (Object f : fishes) {
+					FishType type = FishType.parse(f.toString());
+					if (type != null) {
+						types.add(type);
+					}
+				}
+
+				Map<FishType, List<String>> devisions = new HashMap<FishType, List<String>>();
+				if (!mode) {
+					for (FishType type : types) {
+						devisions.put(type, new ArrayList<String>());
+					}
+					for (Object f : fishes) {
+						FishType type = FishType.parse(f.toString());
+						if (type != null) {
+							devisions.get(type).add(f.toString());
+						}
+					}
+				}
+
+				FishType[] sortedtypes = types.toArray(new FishType[] {});
+				Arrays.sort(sortedtypes);
+				Collections.reverse(Arrays.asList(sortedtypes));
+
+				if (!((Boolean) this.context.getMap("HHTools").invoke("init")).booleanValue()) {
+					this.context.getMap("HHTools").invoke("enterInHunt");
+				} else {
+					this.helper.log("Success", "Уже в охоте");
+				}
+
+				Rectangle r = (Rectangle) this.context.getMap("HHTools").invoke("getHuntArea");
+
+				int diff = (r.width - 750) / 2;
+
+				boolean harvest = false;
+				boolean interrupts = true;
+				String harvested_resource = "";
+				BitSet p = null;
+				List<Pool> pools = new Vector<Pool>();
+
+				do {
+
+					this.helper.grabScreen(r);
+
+					if ((Boolean) this.context.getMap("PixelBot").invoke("find_click_rect",
+							"интерфейс.Охота.закрыть диалог", 1, r.x, r.y, r.width, r.height)) {
+						this.context.getMap("PixelBot").invoke("grab_rect", r.x, r.y, r.width,
+								r.height);
+
+					}
+					if ((Boolean) this.context.getMap("PixelBot").invoke("find_rect",
+							"интерфейс.Охота.закрыть игру", r.x, r.y, r.width, r.height)) {
+						this.helper.log("Info", "CAPTHA 9");
+						this.context.getMap("HHTools").invoke("solveCaptcha", "edge", r.x, r.y,
+								r.width, r.height, "9");
+					}
+
+					if (interrupts) {
+						interrupts = !this.selectWaterPool(r, pool_type, defend, params, pools,
+								harvest);
+						this.helper.grabScreen(r);
+						p = this.detectWaterPool(r, pool_type);
+						p = this.shiftCoastLine(r, p, pool_coastline, !interrupts);
+					}
+
+					harvested_resource = "";
+					harvest = false;
+
+					for (FishType type : sortedtypes) {
+
+						if (!((Boolean) this.context.getMap("HHTools").invoke("fight", params))
+								.booleanValue()) {
+							interrupts = true;
+							break;
+						}
+						BitSet f = this.findFish(r, p, type);
+						this.helper.highlightRegion(new Highlight(f, r, pool_type == PoolType.Water
+								? new Color(0xFF6600) : Color.CYAN));
+
+						Collection<Point> points = Fish.filterFish(f, r.width);
+
+						for (Point point : points) {
+							if (!"Начинать добычу если ресурс занят".equals(interfere)
+									&& (Boolean) this.context.getMap("PixelBot").invoke("find_rect",
+											"интерфейс.Охота.ресурс занят", r.x + point.x - 25,
+											r.y + point.y - 25, 30, 30)) {
+								this.helper.log("Trace", "рыба [" + point.x + "," + point.y
+										+ "] занята");
+							} else {
+								this.context.getMap("PixelBot").invoke("move_click", r.x + point.x,
+										r.y + point.y, 1);
+								this.context.getMap("PixelBot").invoke("sleep", 100);
+
+								boolean b = true;
+								if (!mode) {
+									b = false;
+									for (String ff : devisions.get(type)) {
+										if ((Boolean) this.context.getMap("PixelBot").invoke(
+												"grab_find_rect", "ресурсы.рыба." + ff,
+												r.x + r.width - 75 - diff, r.y - 50, 75, 50)) {
+											b = true;
+											break;
+										}
+									}
+								}
+
+								if (b
+										&& (Boolean) this.context.getMap("PixelBot").invoke(
+												"grab_find_click_rect", "интерфейс.Охота.ловить",
+												1, r.x + diff, r.y - 45, 75, 50)) {
+									harvested_resource = type.toString();
+									this.helper.log("Trace", "собираем рыбу [" + point.x + ","
+											+ point.y + "]");
+									harvest = true;
+									this.context.getMap("PixelBot").invoke("sleep", 2000);
+									break;
+								}
+							}
+						}
+						if (harvest)
+							break;
+					}
+
+					if (harvest) {
+						interrupts |= !((Boolean) this.context.getMap("HHTools").invoke("gather",
+								params, Integer.valueOf(r.x), Integer.valueOf(r.y),
+								Integer.valueOf(r.width), Integer.valueOf(r.height), "edge",
+								harvested_resource)).booleanValue();
+					}
+
+					interrupts |= !((Boolean) this.context.getMap("HHTools")
+							.invoke("fight", params)).booleanValue();
+
+					this.context.getMap("PixelBot").invoke("sleep", 500);
+				} while (true);
+			} catch (UserInterruptionException e) {
+				throw e;
+			} catch (ThreadDeath e) {
+				throw e;
+			} catch (Exception e) {
+				Throwable inner = e;
+
+				do {
+					inner = inner.getCause();
+				} while (inner != null
+						&& !(inner instanceof InterruptedException || inner instanceof ThreadDeath));
+
+				if (inner instanceof InterruptedException) {
+					throw (InterruptedException) inner;
+				} else if (inner instanceof ThreadDeath) {
+					throw (ThreadDeath) inner;
+				}
+				e.printStackTrace();
+			}
+
+		} while (true);
+	}
+
+	private BitSet shiftCoastLine(final Rectangle rect, BitSet p, int pool_coastline,
+			boolean highlight) {
+		if (pool_coastline == 0)
+			return p;
+		BitSet coast = new BitSet(rect.height * rect.width);
+		if (pool_coastline > 0) {
+			p.flip(0, p.size());
+		}
+		int radius = Math.abs(pool_coastline);
+		for (int j = 1; j < rect.height; ++j) {
+			for (int i = 1; i < rect.width; ++i) {
+				if (p.get(j * rect.width + i) != p.get(j * rect.width + i - 1)
+						|| p.get(j * rect.width + i) != p.get((j - 1) * rect.width + i)) {
+					for (int jj = -radius; jj < radius; ++jj) {
+						if (j + jj < 0 || j + jj > rect.height)
+							continue;
+						for (int ii = -radius; ii < radius; ++ii) {
+							if (i + ii < 0 || i + ii > rect.width)
+								continue;
+							coast.set((j + jj) * rect.width + i + ii);
+						}
+					}
+				}
+
+			}
+		}
+
+		coast.andNot(p);
+
+		if (pool_coastline > 0) {
+			p.flip(0, p.size());
+			p.andNot(coast);
+		}
+		if (highlight) {
+			this.helper.highlightRegion(new Highlight(coast, rect, Color.yellow));
+			this.helper.highlightRegion(new Highlight((BitSet) p.clone(), rect, Color.red));
+		}
+
+		if (pool_coastline < 0) {
+			p.or(coast);
+		}
+
+		return p;
+	}
+
+	private boolean selectWaterPool(final Rectangle r, final PoolType pool_type,
+			final boolean defend, final Map<String, Object> params, List<Pool> pools,
+			boolean harvest) throws InterruptedException {
+		String pool_location = (String) (params.get("pool") != null ? ((Map<?, ?>) params
+				.get("pool")).get("pool_location") : "");
+
+		if ("Искать озеро".equals(pool_location)) {
+			this.context.getMap("HHTools").invoke("scroll_to", "l0");
+			this.context.getMap("HHTools").invoke("scroll_to", "r100");
+			while (!this.findWaterPool(r, pool_type, defend, params)) {}
+			return true;
+		} else if ("Указать расположение".equals(pool_location)) {
+			this.context.getMap("HHTools").invoke("scroll_to", "l0");
+			this.context.getMap("HHTools").invoke("scroll_to", "r100");
+
+			Integer pool_location_x = (Integer) ((Map<?, ?>) params.get("pool"))
+					.get("pool_location_x");
+			Integer pool_location_y = (((Rectangle) this.context.getMap("HHTools").invoke(
+					"getHuntArea")).height * (Integer) ((Map<?, ?>) params.get("pool"))
+					.get("pool_location_y")) / 100;
+
+			this.context.getMap("HHTools").invoke("scroll_to",
+					(pool_location_x.intValue() == 0 ? "l" : "r") + pool_location_y);
+			return true;
+		} else if ("Ловить в реке".equals(pool_location)) {
+			if (pools.size() == 0) {
+				this.helper.log("Trace", "Ищем реку");
+				this.context.getMap("HHTools").invoke("scroll_to", "l0");
+				this.context.getMap("HHTools").invoke("scroll_to", "r100");
+				this.listWaterPools(r, pool_type, defend, params, pools);
+				this.helper.log("Trace", "Река(" + pools.size() + ") : " + pools);
+
+			}
+			if (!harvest && pools.size() != 0) {
+				int pos = (int) (Math.random() * pools.size());
+				if (pos >= 0 && pos < pools.size()) {
+					Pool pool = pools.get(pos);
+					this.helper.log("Trace", "Переключаем водоем  (" + pool + ")");
+					this.context.getMap("HHTools").invoke("scroll_to", pool.scroll);
+				}
+			}
+			return false;
+		} else {
+			return false;
+		}
+
+	}
+
+	private static class Pool implements Comparable<Pool> {
+		private int size = 0;
+		private String scroll = "";
+
+		public Pool(int size, String scroll) {
+			this.size = size;
+			this.scroll = scroll;
+		}
+
+		@Override
+		public int compareTo(Pool other) {
+			return this.size - other.size;
+		}
+
+		@Override
+		public String toString() {
+			return this.size + "@" + this.scroll;
+		}
+	}
+
+	private boolean listWaterPools(final Rectangle r, final PoolType pool_type,
+			final boolean defend, final Map<String, Object> params, final List<Pool> result)
+			throws InterruptedException {
+
+		INativeCallable c = new INativeCallable() {
+
+			@SuppressWarnings("boxing")
+			@Override
+			public Object call(Object thisObj, Object... params) throws InterruptedException {
+				Fish.this.context.getMap("PixelBot").invoke("grab_rect", r.x, r.y, r.width, r.height);
+				BitSet b = Fish.this.detectWaterPool(r, pool_type);
+				if (b.size() - b.cardinality() > POOL_MIN_SIZE * 10) {
+					result.add(new Pool(b.size() - b.cardinality(), params[4].toString()));
+				}
+				return Fish.this.context.getMap("HHTools").invoke("fight", params);
+			}
+		};
+
+		return ((Boolean) this.context.getMap("HHTools").invoke("scroll", c)).booleanValue();
+	}
+
+	private boolean findWaterPool(final Rectangle r, final PoolType pool_type,
+			final boolean defend, final Map<String, Object> params) throws InterruptedException {
+		List<Pool> pools = new Vector<Pool>();
+		boolean result = this.listWaterPools(r, pool_type, defend, params, pools);
+		if (!result)
+			return false;
+		if (pools.size() == 0) {
+			throw new InterruptedException("Не нашел водоем");
+		} else {
+			this.helper.log("Trace", "Водоемы:  " + pools);
+		}
+		Collections.sort(pools);
+		Collections.reverse(pools);
+
+		Pool pool = pools.get(0);
+
+		this.helper.log("Trace", "Выбрали водоем  (" + pool + ")");
+		this.context.getMap("HHTools").invoke("scroll_to", pool.scroll);
+		return true;
+	}
+
+	protected BitSet detectWaterPool(final Rectangle rect, final PoolType pool_type) {
+		BitSet result = new BitSet(rect.height * rect.width);
+
+		for (int k = 0; k < result.size(); ++k) {
+
+			int c = this.helper.getPixel(rect.x + (k % rect.width), rect.y + (k / rect.width));
+			int r = (c & 0xFF0000) >> 16;
+			int g = (c & 0xFF00) >> 8;
+			int b = c & 0xFF;
+
+			if (pool_type == PoolType.Water) {
+				if ((b > g + 20) && (b > r + 20)) {
+					result.set(k);
+				}
+			} else if (pool_type == PoolType.Lava) {
+				if ((r > g + 50) && (r > b + 50)) {
+					result.set(k);
+				} else if ((r > 240) || (g > 240) || (b > 240)) {
+					result.set(k);
+				}
+			}
+		}
+
+		Fish.filter(result, rect.width);
+		result.flip(0, result.size());
+		Fish.filter(result, rect.width);
+
+		// this.helper.highlightRegion(new Highlight(result, rect, pool_type == PoolType.Water
+		// ? Color.red : Color.blue));
+		return result;
+	}
+
+	private static void filter(BitSet set, int width) {
+		BitSet myset = new BitSet(set.size());
+		myset.or(set);
+
+		BitSet newset = new BitSet(set.size());
+
+		int pos = -1;
+		while ((pos = myset.nextSetBit(0)) != -1) {
+			Stack<Integer> stack = new Stack<Integer>();
+			stack.push(Integer.valueOf(pos));
+			Stack<Integer> area = new Stack<Integer>();
+			area.push(Integer.valueOf(pos));
+
+			myset.clear(pos);
+			while (stack.size() != 0) {
+				int p = stack.pop().intValue();
+				Fish.check(stack, myset, p - 1, area);
+				Fish.check(stack, myset, p + 1, area);
+				Fish.check(stack, myset, p - width, area);
+				Fish.check(stack, myset, p + width, area);
+			}
+
+			if (area.size() > POOL_MIN_SIZE) {
+				for (int pp : area) {
+					newset.set(pp);
+				}
+			}
+		}
+
+		set.clear();
+		set.or(newset);
+	}
+
+	private static void check(Stack<Integer> stack, BitSet set, int pos, Stack<Integer> area) {
+		if (pos > 0 && pos < set.length() && set.get(pos)) {
+			set.clear(pos);
+			stack.push(Integer.valueOf(pos));
+			area.push(Integer.valueOf(pos));
+		}
+	}
+
+	private BitSet findFish(Rectangle rect, BitSet mask, FishType type) {
+		BitSet result = new BitSet(rect.height * rect.width);
+		for (int k = 0; k < result.size(); ++k) {
+			if (!mask.get(k)) {
+				int c = this.helper.getPixel(rect.x + (k % rect.width), rect.y + (k / rect.width));
+				int r = (c & 0xFF0000) >> 16;
+				int g = (c & 0xFF00) >> 8;
+				int b = c & 0xFF;
+				switch (type) {
+				case Frequent:
+					// if ((Math.abs(b - r) < 80) && (Math.abs(g - r) < 80)
+					// && (Math.abs(b - g) <
+					// 80) && (b > 128) && (r > 128) && (g > 128)) {
+					if ((Math.abs(b - r) < 80) && (Math.abs(g - r) < 80) && (Math.abs(b - g) < 80)
+							&& (b > 128) && (r > 128) && (g > 128) && (b < 240) && (r < 240)
+							&& (g < 240)) {
+						result.set(k);
+					}
+					break;
+				case Regular:
+					if ((b + 60 < g) && (r + 60 < g) && (g > 128)) {
+						result.set(k);
+					}
+					break;
+				case Occasional:
+					if ((g + 60 < b) && (r + 20 < b) && b > 128 && r < 16 && g > 80) {
+						result.set(k);
+					}
+					break;
+				case Individual:
+					// #9927B3
+					// #8515A3
+					if (r > 0x46 && r < 0xA0 && g < 0x3c && b > 0xA0) {
+						result.set(k);
+					}
+					break;
+				case Rare:
+					if (r > 128 && g < 128 && b < 128) {
+						result.set(k);
+					}
+					break;
+				}
+			}
+		}
+
+		return result;
+	}
+
+	private static Collection<Point> filterFish(BitSet set, int width) {
+		BitSet myset = new BitSet(set.size());
+		myset.or(set);
+
+		List<Point> result = new ArrayList<Point>();
+
+		int pos = -1;
+		while ((pos = myset.nextSetBit(0)) != -1) {
+			myset.clear(pos);
+			double curx = pos % width;
+			double cury = pos / width;
+			int weight = 1;
+
+			int newpos = -1;
+
+			while ((newpos = findnewpos(myset, width, (int) curx, (int) cury)) != -1) {
+				myset.clear(newpos);
+				int nx = newpos % width;
+				int ny = newpos / width;
+
+				curx = (curx * weight + nx) / (weight + 1);
+				cury = (cury * weight + ny) / (weight + 1);
+
+				++weight;
+			}
+			if (weight > 20) {
+				result.add(new Point((int) curx, (int) cury));
+			}
+		}
+		if (result.size() > 10)
+			result = result.subList(0, 10);
+		return result;
+	}
+
+	private static int findnewpos(BitSet set, int width, int posx, int posy) {
+		final int variance = 30;
+
+		for (int i = -variance; i < variance; ++i) {
+			for (int j = -variance; j < variance; ++j) {
+				int p = (posx + i) + (posy + j) * width;
+				if (p > 0 && p < set.size() && set.get(p)) {
+					return p;
+				}
+			}
+		}
+		return -1;
+	}
+
+}

@@ -1,0 +1,4 @@
+pixelbot.script.instantiator.java.JavaInstantiatorRegistrator
+pixelbot.script.instantiator.js.rhino.JsInstantiatorRegistrator
+pixelbot.script.instantiator.js.graal.GraalInstantiatorRegistrator
+pixelbot.script.instantiator.js.nashorn.NashornInstantiatorRegistrator

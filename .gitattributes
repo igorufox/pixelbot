@@ -1,0 +1,15 @@
+# Normalise to LF in the repository; check out with whatever the platform wants.
+* text=auto
+
+*.java   text diff=java
+*.js     text
+*.djs    text
+*.djava  text
+*.xml    text
+*.md     text
+*.properties text
+
+*.png binary
+*.gif binary
+*.jar binary
+*.zip binary

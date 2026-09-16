@@ -1,0 +1,30 @@
+# build output
+target/
+
+# a scratch working directory for running the application
+run/
+
+# the original 2014 archives this repository was reconstructed from
+*.zip
+
+# IDE
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# runtime state the application writes next to itself
+log.*.xml
+log.*.xml.lck
+*.lck
+*.fileprefs
+!examples/*.fileprefs
+elements.elz
+elements/
+media/
+
+# OS
+Thumbs.db
+.DS_Store

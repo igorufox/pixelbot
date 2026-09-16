@@ -1,0 +1,25 @@
+#FilePreferences
+#Tue Jul 01 02:20:01 PDT 2014
+pixelbot.bot.mouse.pause_after_positioning_max=300
+pixelbot.script.files=[\n\t"scripts/arena.djs",\n\t"scripts/battle.djs",\n\t"scripts/pixelbot.djs",\n\t"scripts/fight.djs",\n\t"scripts/Fish.djava",\n\t"scripts/fortune.djs",\n\t"scripts/grass.djs",\n\t"scripts/hhtools.djs",\n\t"scripts/hunt.djs",\n\t"scripts/processing.djs",\n\t"scripts/splinter.djs",\n\t"scripts/supethits-sequence.djs",\n\t"scripts/test.djs",\n\t"scripts/tools.djs",\n\t"scripts/travel.djs",\n\t"scripts/use-item.djs",\n\t"scripts/wand.djs"\n]
+pixelbot.bot.mouse.click_duration_min=100
+pixelbot.bot.mouse.click_duration_max=300
+pixelbot.locale=ru
+pixelbot.bot.color=ffff6666
+pixelbot.bot.minimize_to_system_tray=false
+pixelbot.script.active=wand.djs
+pixelbot.script.interpreters={\n\t"parser"\:\t {\n\t\t"zip"\: "zip/generic",\n\t\t"djava"\: "java/eclipse",\n\t\t"jar"\: "jar/generic",\n\t\t"djs"\: "javascript/rhino/debug"\n\t},\n\t"instantiator"\:\t {\n\t\t"java/generic"\: true,\n\t\t"javascript/rhino"\: true\n\t},\n\t"debugger"\: "javascript/rhino"\n}
+pixelbot.bot.bounds.height=600
+pixelbot.bot.hide_on_execution=false
+pixelbot.script.job=Fish
+pixelbot.bot.mouse.pause_after_click_min=100
+pixelbot.bot.bounds.width=600
+pixelbot.bot.mouse.pause_after_click_max=300
+pixelbot.bot.mouse.moving_speed=50
+pixelbot.bot.highlight_found_elems=true
+pixelbot.script.breakponts={}
+pixelbot.bot.locale=RU
+pixelbot.bot.check_user_activity=true
+pixelbot.bot.bounds.y=59
+pixelbot.bot.bounds.x=319
+pixelbot.bot.mouse.pause_after_positioning_min=100

@@ -1,0 +1,7 @@
+pixelbot.script.parser.clazz.ClassParserRegistator
+pixelbot.script.parser.jar.JarParserRegistator
+pixelbot.script.parser.zip.ZipParserRegistator
+pixelbot.script.parser.java.JavaParserRegistator
+pixelbot.script.parser.js.rhino.JsParserRegistrator
+pixelbot.script.parser.js.graal.GraalParserRegistrator
+pixelbot.script.parser.js.nashorn.NashornParserRegistrator
